@@ -1,10 +1,14 @@
 import csv
-from random import shuffle
+import pandas as pd
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import StandardScaler
 
 
 def load_data(file_name):
     data = Data()
-    data.load_form_csv(file_name)
+    data.load_from_csv(file_name, pandas=True)
     return data
 
 
@@ -14,6 +18,9 @@ class Data:
         self.__target = []
         self.__feature_names = []
         self.__target_names = []
+
+    def __len__(self):
+        return len(self.__data)
 
     @property
     def data(self):
@@ -47,7 +54,13 @@ class Data:
     def target_names(self, target_names):
         self.__target_names = list(target_names)
 
-    def load_form_csv(self, file_name):
+    def load_from_csv(self, file_name, pandas=False):
+        if pandas:
+            self.__load_with_pandas(file_name)
+        else:
+            self.__load_from_csv(file_name)
+
+    def __load_from_csv(self, file_name):
         with open(file_name, 'r') as file:
             reader = csv.DictReader(file)
             self.__feature_names = reader.fieldnames[:-1]
@@ -57,35 +70,32 @@ class Data:
                 self.__data.append(data)
                 self.__target.append(label)
 
-    def split(self, ratio=0.8, random=False):
-        limit = int(len(self.__data) * ratio)
-        train, test = Data(), Data()
+    def __load_with_pandas(self, file_name):
+        df = pd.read_csv(file_name)
+        xs = df.iloc[:, :-1]
+        y = df.iloc[:, -1]
 
+        scaler = StandardScaler()
+        scaler.fit(xs)
+        self.__data = scaler.transform(xs)
+
+        encoder = LabelEncoder()
+        encoder.fit(y)
+        self.__target = encoder.transform(y)
+        self.__target_names = encoder.classes_
+        self.__feature_names = df.columns
+
+    def split(self, test_size, random_state=1):
+        train, test = Data(), Data()
         train.feature_names = self.feature_names
         test.feature_names = self.feature_names
 
         train.target_names = self.target_names
         test.target_names = self.target_names
 
-        if random:
-            return self.__random_split(train, test, limit)
-
-        return self.__straight_split(train, test, limit)
-
-    def __straight_split(self, train, test, limit):
-        train.data, test.data = self.__data[:limit], self.__data[limit:]
-        train.target, test.target = self.__target[:limit], self.__target[limit:]
-        return train, test
-
-    def __random_split(self, train, test, limit):
-        shuffled = list(zip(self.__data, self.__target))
-        shuffle(shuffled)
-
-        data = [chunk[0] for chunk in shuffled]
-        target = [chunk[1] for chunk in shuffled]
-
-        train.data, test.data = data[:limit], data[limit:]
-        train.target, test.target = target[:limit], target[limit:]
+        train.data, test.data, train.target, test.target = train_test_split(self.__data, self.__target,
+                                                                            test_size=test_size,
+                                                                            random_state=random_state)
         return train, test
 
     def __add_target(self, target):
