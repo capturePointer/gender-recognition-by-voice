@@ -11,13 +11,14 @@ def main():
     cs = [
         ('CRAD', lambda: crad.calculate(train, test, write=True, max_depth=None)),
         ('SVM', lambda: svm.calculate(train, test)),
-        ('logistic regression', lambda: logistic.calculate(train, test)),
+        ('Logistic Regression', lambda: logistic.calculate(train, test, show_coef=True, sort_coef=True)),
     ]
 
     print('> Calculating...')
     for name, func in cs:
-        prediction = func()
         print(f"== {name} ==")
+
+        prediction = func()
         print(f'accuracy score: {metrics.accuracy_score(test.target, prediction)}')
         print(f'f1-score: {metrics.f1_score(test.target, prediction)}')
         print()
